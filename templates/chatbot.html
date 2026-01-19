@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Chat Laboral</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <style id="app-style">
+        :root {
+            --bg-primary: #202123;
+            --bg-secondary: #343541;
+            --text-primary: #f7f7f7;
+            --text-secondary: #c7c7c7;
+            --accent: #10a37f;
+            --accent-light: #1a7f64;
+            --border-color: #4d4d4f;
+            --input-bg: #40414f;
+            --hover-color: #2d2d2d;
+            --sidebar-width: 280px;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body, html { font-family:'Inter',sans-serif; background:var(--bg-secondary); color:var(--text-primary); height:100%; overflow:hidden; }
+        .app-container { display:flex; height:100vh; }
+        .sidebar { width:var(--sidebar-width); background:var(--bg-primary); height:100%; overflow-y:auto; transition:transform .3s ease; display:flex; flex-direction:column; }
+        .sidebar-header { padding:15px; display:flex; align-items:center; border-bottom:1px solid var(--border-color); }
+        .new-chat-btn { display:flex; align-items:center; padding:10px 15px; background:transparent; border:1px solid var(--border-color); border-radius:5px; color:var(--text-primary); cursor:pointer; width:100%; font-size:14px; }
+        .new-chat-btn:hover { background:var(--hover-color); }
+        .new-chat-btn i { margin-right:10px; }
+        .search-chats { margin:15px; position:relative; }
+        .search-chats input { width:100%; padding:10px 15px 10px 40px; background:var(--input-bg); border:1px solid var(--border-color); border-radius:5px; color:var(--text-primary); font-size:14px; }
+        .search-chats i { position:absolute; left:15px; top:50%; transform:translateY(-50%); color:var(--text-secondary); }
+        .sidebar-section-title { padding:10px 15px 5px; font-size:12px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-secondary); }
+        .lawyer-list { padding:5px 15px 15px; }
+        .lawyer-item { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:6px; padding:8px 10px; margin-bottom:8px; cursor:pointer; }
+        .lawyer-item:hover { background:rgba(255,255,255,0.05); }
+        .lawyer-name { font-size:13px; font-weight:600; }
+        .lawyer-specialty { font-size:11px; color:var(--text-secondary); }
+        .chat-history { padding:15px; flex:1; }
+        .history-title { color:var(--text-secondary); font-size:13px; margin-bottom:10px; font-weight:500; }
+        .chat-item { display:flex; align-items:center; padding:10px; border-radius:5px; margin-bottom:5px; cursor:pointer; font-size:14px; }
+        .chat-item:hover { background:var(--hover-color); }
+        .chat-item-icon { width:20px; height:20px; display:flex; align-items:center; justify-content:center; margin-right:10px; border-radius:4px; background-color:#e67e22; }
+        .chat-item-text { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .user-profile { padding:15px; display:flex; align-items:center; border-top:1px solid var(--border-color); margin-top:auto; }
+        .user-avatar { width:32px; height:32px; background:var(--accent); border-radius:50%; margin-right:10px; display:flex; align-items:center; justify-content:center; font-weight:600; }
+        .user-name { font-size:14px; }
+        .main-content { flex:1; display:flex; flex-direction:column; height:100%; position:relative; }
+        .chat-header { padding:15px 20px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; }
+        .chat-title { font-size:15px; font-weight:600; }
+        .chat-subtitle { font-size:12px; color:var(--text-secondary); }
+        .header-actions { display:flex; gap:10px; }
+        .clear-btn { padding:8px 12px; background:transparent; border:1px solid var(--border-color); border-radius:5px; color:var(--text-secondary); cursor:pointer; font-size:14px; }
+        .clear-btn:hover { background:var(--hover-color); }
+        .hamburger-menu { display:none; background:none; border:none; color:var(--text-primary); font-size:20px; cursor:pointer; margin-right:10px; }
+        .chat-messages { flex:1; padding:20px; overflow-y:auto; display:flex; flex-direction:column; }
+        .welcome-message { text-align:center; margin:auto 0; padding:0 20px; }
+        .welcome-message h1 { font-size:2rem; margin-bottom:10px; }
+        .welcome-message p { color:var(--text-secondary); font-size:1.1rem; }
+        .message { margin-bottom:20px; max-width:80%; animation:fadeIn .3s; }
+        @keyframes fadeIn { from {opacity:0; transform:translateY(10px);} to {opacity:1; transform:translateY(0);} }
+        .message-user { align-self:flex-end; }
+        .message-bot { align-self:flex-start; }
+        .message-content { padding:12px 16px; border-radius:10px; font-size:15px; line-height:1.5; white-space:pre-wrap; }
+        .message-user .message-content { background:var(--accent); }
+        .message-bot .message-content { background:var(--input-bg); }
+        .typing-indicator { padding:10px 15px; font-size:14px; color:var(--text-secondary); display:none; align-items:center; margin-left:20px; }
+        .typing-indicator.active { display:flex; }
+        .typing-indicator .dots { display:flex; margin-left:10px; }
+        .typing-indicator .dot { width:6px; height:6px; background:var(--text-secondary); border-radius:50%; margin-right:4px; animation:dot-flashing 1s infinite alternate; }
+        .typing-indicator .dot:nth-child(2) { animation-delay:.2s; }
+        .typing-indicator .dot:nth-child(3) { animation-delay:.4s; }
+        @keyframes dot-flashing { 0% {opacity:.2;} 100% {opacity:1;} }
+        .quick-buttons { display:flex; gap:10px; padding:10px 20px; overflow-x:auto; border-top:1px solid var(--border-color); }
+        .quick-btn { white-space:nowrap; padding:8px 15px; background:var(--input-bg); border:1px solid var(--border-color); border-radius:20px; color:var(--text-primary); cursor:pointer; font-size:14px; transition:all .2s; }
+        .quick-btn:hover { background:var(--hover-color); }
+        .chat-input-container { padding:15px 20px 25px; position:relative; }
+        .chat-input-box { display:flex; align-items:center; background:var(--input-bg); border:1px solid var(--border-color); border-radius:10px; padding:5px; }
+        .chat-input { flex:1; background:transparent; border:none; color:var(--text-primary); padding:10px; font-size:15px; outline:none; resize:none; max-height:120px; min-height:24px; }
+        .chat-input-actions { display:flex; padding-right:10px; }
+        .mic-btn, .send-btn { background:none; border:none; color:var(--text-secondary); font-size:16px; cursor:pointer; padding:5px; }
+        .send-btn { color:var(--accent); }
+        .mic-btn:hover, .send-btn:hover { color:var(--text-primary); }
+        .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.7); display:flex; align-items:center; justify-content:center; z-index:1000; opacity:0; pointer-events:none; transition:opacity .3s; }
+        .modal-backdrop.active { opacity:1; pointer-events:all; }
+        .modal-content { background:var(--bg-primary); padding:30px; border-radius:10px; max-width:400px; width:100%; text-align:center; transform:translateY(20px); transition:transform .3s; }
+        .modal-backdrop.active .modal-content { transform:translateY(0); }
+        .modal-title { font-size:24px; margin-bottom:20px; }
+        .modal-input { width:100%; padding:12px; margin-bottom:20px; background:var(--input-bg); border:1px solid var(--border-color); border-radius:5px; color:var(--text-primary); font-size:16px; }
+        .modal-btn { padding:12px 20px; background:var(--accent); border:none; border-radius:5px; color:#fff; font-size:16px; cursor:pointer; transition:background-color .2s; }
+        .modal-btn:hover { background:var(--accent-light); }
+        @media (max-width:768px) {
+            .sidebar { position:fixed; left:0; top:0; z-index:100; transform:translateX(-100%); box-shadow:2px 0 10px rgba(0,0,0,.2); }
+            .sidebar.active { transform:translateX(0); }
+            .hamburger-menu { display:block; }
+            .welcome-message h1 { font-size:1.5rem; }
+            .welcome-message p { font-size:.9rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <button class="new-chat-btn" id="new-chat-btn"><i class="fas fa-plus"></i>Nuevo caso laboral</button>
+        </div>
+        <div class="search-chats">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Buscar chats"/>
+        </div>
+        <div class="sidebar-section-title">Abogados registrados</div>
+        <div class="lawyer-list" id="lawyer-list">
+            <div class="lawyer-item" data-lawyer="Abogada Laura">
+                <div class="lawyer-name">Abogada Laura</div>
+                <div class="lawyer-specialty">Despidos · Hostigamiento</div>
+            </div>
+            <div class="lawyer-item" data-lawyer="Lic. Ramírez">
+                <div class="lawyer-name">Lic. Ramírez</div>
+                <div class="lawyer-specialty">IMSS · Infonavit · Finiquitos</div>
+            </div>
+            <div class="lawyer-item" data-lawyer="Equipo laboral">
+                <div class="lawyer-name">Equipo laboral</div>
+                <div class="lawyer-specialty">Orientación general</div>
+            </div>
+        </div>
+        <div class="chat-history">
+            <div class="history-title">Casos previos</div>
+            <div id="history-list"></div>
+        </div>
+        <div class="user-profile">
+            <div class="user-avatar" id="user-avatar"></div>
+            <div class="user-name" id="profile-name"></div>
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main-content">
+        <header class="chat-header">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <button class="hamburger-menu"><i class="fas fa-bars"></i></button>
+                <div>
+                    <div class="chat-title">Chat de orientación laboral</div>
+                    <div class="chat-subtitle">Cuéntame qué te pasó en tu trabajo y vemos opciones</div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="clear-btn" id="clear-chat-btn"><i class="fas fa-trash-alt"></i> Limpiar</button>
+            </div>
+        </header>
+
+        <div class="chat-messages" id="chat-messages">
+            <div class="welcome-message">
+                <h1 id="welcome-text">Hola, Usuario. ¿Qué situación laboral quieres revisar?</h1>
+                <p>Ejemplo: “me despidieron sin aviso”, “no me pagan horas extra”, “me están acosando en el trabajo”.</p>
+            </div>
+        </div>
+
+        <div class="typing-indicator" id="typing-indicator">
+            <span id="status-text">Revisando tu caso...</span>
+            <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        </div>
+
+        <div class="quick-buttons">
+            <button class="quick-btn" data-query="Me despidieron sin avisar ni darme nada, ¿qué puedo hacer?">Despido injustificado</button>
+            <button class="quick-btn" data-query="Mi jefe me grita y me amenaza, ¿eso es acoso laboral?">Acoso u hostigamiento</button>
+            <button class="quick-btn" data-query="Quiero renunciar pero que me paguen lo que me toca, ¿cómo se calcula?">Finiquito / liquidación</button>
+            <button class="quick-btn" data-query="No me pagan horas extra ni domingos, ¿puedo reclamar?">Pago de horas / prestaciones</button>
+        </div>
+
+        <div class="chat-input-container">
+            <div class="chat-input-box">
+                <textarea class="chat-input" id="chat-input" placeholder="Describe tu situación laboral con detalles (qué pasó, cuándo, si hay testigos, si tienes contrato, etc.)"></textarea>
+                <div class="chat-input-actions">
+                    <button class="mic-btn" id="mic-btn"><i class="fas fa-microphone"></i></button>
+                    <button class="send-btn" id="send-btn"><i class="fas fa-paper-plane"></i></button>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Modal nombre -->
+<div class="modal-backdrop" id="name-modal">
+    <div class="modal-content">
+        <h2 class="modal-title">¡Bienvenido!</h2>
+        <p>Por favor, introduce tu nombre para personalizar tu experiencia</p>
+        <input type="text" class="modal-input" id="name-input" placeholder="Tu nombre"/>
+        <button class="modal-btn" id="save-name-btn">Continuar</button>
+    </div>
+</div>
+
+<script id="app-script">
+    // DOM
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('send-btn');
+    const micBtn = document.getElementById('mic-btn');
+    const clearChatBtn = document.getElementById('clear-chat-btn');
+    const typingIndicator = document.getElementById('typing-indicator');
+    const statusText = document.getElementById('status-text');
+    const welcomeText = document.getElementById('welcome-text');
+    const quickButtons = document.querySelectorAll('.quick-btn');
+    const nameModal = document.getElementById('name-modal');
+    const nameInput = document.getElementById('name-input');
+    const saveNameBtn = document.getElementById('save-name-btn');
+    const userAvatar = document.getElementById('user-avatar');
+    const profileName = document.getElementById('profile-name');
+    const hamburgerMenu = document.querySelector('.hamburger-menu');
+    const sidebar = document.querySelector('.sidebar');
+    const historyList = document.getElementById('history-list');
+    const lawyerList = document.getElementById('lawyer-list');
+    const newChatBtn = document.getElementById('new-chat-btn');
+
+    // Estado
+    let userName = '';
+    let chatHistory = []; // [{role:'user'|'bot', content:'...'}]
+    let selectedLawyer = null;
+
+    // Init
+    document.addEventListener('DOMContentLoaded', initApp);
+
+    function initApp() {
+        loadUserName();
+        loadChatHistory();
+        updateHistoryList();
+
+        sendBtn.addEventListener('click', handleSendMessage);
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage();
+            }
+        });
+        clearChatBtn.addEventListener('click', clearChat);
+        quickButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                chatInput.value = btn.dataset.query;
+                handleSendMessage();
+            });
+        });
+        saveNameBtn.addEventListener('click', saveUserName);
+        hamburgerMenu.addEventListener('click', toggleSidebar);
+        if (lawyerList) {
+            lawyerList.addEventListener('click', (e) => {
+                const item = e.target.closest('.lawyer-item');
+                if (!item) return;
+                selectedLawyer = item.dataset.lawyer;
+                appendMessage('bot', `Has seleccionado al abogado: ${selectedLawyer}. Cuando termines de contar tu caso, lo podremos canalizar con él/ella.`);
+            });
+        }
+        if (newChatBtn) newChatBtn.addEventListener('click', () => clearChat());
+
+        chatInput.addEventListener('input', () => {
+            chatInput.style.height = 'auto';
+            chatInput.style.height = chatInput.scrollHeight + 'px';
+        });
+
+        micBtn.addEventListener('click', () => alert('La funcionalidad de micrófono se agregará en otra versión.'));
+    }
+
+    // Nombre
+    function loadUserName() {
+        userName = localStorage.getItem('chatbot-user-name') || '';
+        if (userName) {
+            welcomeText.textContent = `Hola, ${userName}. ¿Qué situación laboral quieres revisar?`;
+            userAvatar.textContent = userName.charAt(0).toUpperCase();
+            profileName.textContent = userName;
+        } else {
+            nameModal.classList.add('active');
+        }
+    }
+    function saveUserName() {
+        const name = nameInput.value.trim();
+        if (name) {
+            userName = name;
+            localStorage.setItem('chatbot-user-name', userName);
+            welcomeText.textContent = `Hola, ${userName}. ¿Qué situación laboral quieres revisar?`;
+            userAvatar.textContent = userName.charAt(0).toUpperCase();
+            profileName.textContent = userName;
+            nameModal.classList.remove('active');
+        }
+    }
+
+    // Historial (localStorage)
+    function loadChatHistory() {
+        try {
+            chatHistory = JSON.parse(localStorage.getItem('chatbot-history')) || [];
+            if (chatHistory.length > 0) {
+                chatMessages.innerHTML = '';
+                chatHistory.forEach(msg => appendMessage(msg.role, msg.content));
+                scrollToBottom();
+            }
+        } catch (e) {
+            console.error('Error loading chat history:', e);
+            chatHistory = [];
+        }
+    }
+    function saveChatHistory() {
+        localStorage.setItem('chatbot-history', JSON.stringify(chatHistory));
+        updateHistoryList();
+    }
+    function updateHistoryList() {
+        const savedChats = JSON.parse(localStorage.getItem('chatbot-saved-chats')) || [];
+        historyList.innerHTML = '';
+        if (savedChats.length === 0) {
+            const empty = document.createElement('div');
+            empty.textContent = 'No hay casos guardados';
+            empty.style.color = 'var(--text-secondary)';
+            empty.style.fontSize = '14px';
+            empty.style.padding = '10px';
+            historyList.appendChild(empty);
+            return;
+        }
+        savedChats.forEach((chat, idx) => {
+            const item = document.createElement('div');
+            item.className = 'chat-item';
+            item.innerHTML = `
+                <div class="chat-item-icon"><i class="fas fa-briefcase"></i></div>
+                <div class="chat-item-text">${chat.title}</div>
+            `;
+            item.addEventListener('click', () => loadSavedChat(idx));
+            historyList.appendChild(item);
+        });
+    }
+    function loadSavedChat(index) {
+        const savedChats = JSON.parse(localStorage.getItem('chatbot-saved-chats')) || [];
+        if (savedChats[index]) {
+            chatHistory = savedChats[index].messages;
+            chatMessages.innerHTML = '';
+            chatHistory.forEach(msg => appendMessage(msg.role, msg.content));
+            localStorage.setItem('chatbot-history', JSON.stringify(chatHistory));
+            scrollToBottom();
+            toggleSidebar();
+        }
+    }
+    function saveCurrentChatToHistory() {
+        const savedChats = JSON.parse(localStorage.getItem('chatbot-saved-chats')) || [];
+        const title = chatHistory[0].content.substring(0, 30) + (chatHistory[0].content.length > 30 ? '...' : '');
+        savedChats.unshift({
+            title,
+            messages: chatHistory,
+            date: new Date().toISOString()
+        });
+        if (savedChats.length > 10) savedChats.pop();
+        localStorage.setItem('chatbot-saved-chats', JSON.stringify(savedChats));
+        updateHistoryList();
+    }
+
+    // UI mensajes
+    function appendMessage(role, content) {
+        const el = document.createElement('div');
+        el.className = `message message-${role}`;
+        const box = document.createElement('div');
+        box.className = 'message-content';
+        box.textContent = content;
+        el.appendChild(box);
+        chatMessages.appendChild(el);
+        scrollToBottom();
+    }
+    function scrollToBottom() {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    function clearChat() {
+        chatHistory = [];
+        localStorage.setItem('chatbot-history', JSON.stringify(chatHistory));
+        chatMessages.innerHTML = `
+            <div class="welcome-message">
+                <h1 id="welcome-text">Hola, ${userName || 'Usuario'}. ¿Qué situación laboral quieres revisar?</h1>
+                <p>Ejemplo: “me despidieron sin aviso”, “no me pagan horas extra”, “me están acosando en el trabajo”.</p>
+            </div>
+        `;
+    }
+    function toggleSidebar() { sidebar.classList.toggle('active'); }
+
+    // Indicador de "escribiendo"
+    function showTypingIndicator(text) {
+        statusText.textContent = text;
+        typingIndicator.classList.add('active');
+        scrollToBottom();
+    }
+    function hideTypingIndicator() {
+        typingIndicator.classList.remove('active');
+    }
+
+    // Envío de mensaje
+    function handleSendMessage() {
+        const message = chatInput.value.trim();
+        if (!message) return;
+
+        const welcome = chatMessages.querySelector('.welcome-message');
+        if (welcome) chatMessages.removeChild(welcome);
+
+        appendMessage('user', message);
+        chatHistory.push({ role: 'user', content: message });
+        saveChatHistory();
+
+        chatInput.value = '';
+        chatInput.style.height = 'auto';
+
+        showTypingIndicator('Redactando orientación...');
+        getBotResponse(message);
+    }
+
+    // ======= AQUÍ se llama al backend /api/chat =======
+    async function getBotResponse(message) {
+        try {
+            const res = await fetch("/api/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    message,
+                    history: chatHistory  // El backend normaliza roles y añade el system prompt
+                }),
+            });
+
+            if (!res.ok) {
+                const errText = await res.text();
+                throw new Error(errText || `HTTP ${res.status}`);
+            }
+
+            const data = await res.json();
+            const response = data.reply || "No recibí respuesta del servidor.";
+            hideTypingIndicator();
+
+            // Anexos opcionales (ej. si eligió abogado)
+            let finalText = response;
+            if (selectedLawyer) {
+                finalText += `\n\nPuedo canalizarte con **${selectedLawyer}** para seguimiento directo.`;
+            }
+
+            appendMessage('bot', finalText);
+            chatHistory.push({ role: 'bot', content: finalText });
+            saveChatHistory();
+
+            if (chatHistory.length === 2) saveCurrentChatToHistory();
+        } catch (err) {
+            console.error(err);
+            hideTypingIndicator();
+            appendMessage('bot', "Hubo un problema procesando tu mensaje. Intenta de nuevo en unos segundos.");
+        }
+    }
+</script>
+</body>
+</html>

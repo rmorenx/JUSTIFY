@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Justify Legal Connect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style id="app-style">
+      body {
+        font-family: 'Montserrat', sans-serif;
+        color: #333;
+        scroll-behavior: smooth;
+      }
+      .hero-section {
+        background: linear-gradient(to right, #1a365d, #2a4365);
+        height: 90vh;
+        min-height: 600px;
+      }
+      .section-heading { position: relative; margin-bottom: 2rem; }
+      .section-heading:after {
+        content: '';
+        position: absolute;
+        bottom: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80px;
+        height: 4px;
+        background-color: #1a365d;
+      }
+      .lawyer-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+      .lawyer-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1); }
+      .chat-container { height: auto; overflow-y: auto; background-color: #f8fafc; border-radius: 0; }
+      .user-message { background-color: #e2e8f0; align-self: flex-end; border-radius: 18px 18px 0 18px; }
+      .ai-message { background-color: #1a365d; color: white; align-self: flex-start; border-radius: 18px 18px 18px 0; }
+      .testimonial-card { background-color: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); }
+      .scroll-to-top { position: fixed; bottom: 20px; right: 20px; display: none; z-index: 99; }
+      @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+      @keyframes fadeOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.95); } }
+      .animate-fade-in { animation: fadeIn 0.5s ease forwards; }
+      .carousel { overflow: hidden; position: relative; }
+      .carousel-inner { display: flex; transition: transform 0.5s ease; }
+      .carousel-item { min-width: 100%; }
+      .loader { border: 5px solid #f3f3f3; border-top: 5px solid #1a365d; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; display: inline-block; }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      #user-menu-button:focus + #dropdown-menu, #dropdown-menu:hover { display: block; }
+      .chat-session { border-left: 3px solid transparent; transition: background-color 0.2s ease; }
+      .chat-session.active { border-left-color: #4F46E5; background-color: #2D2D2D; }
+      #login-modal { animation: fadeIn 0.2s ease-out; }
+      #login-modal.hiding { animation: fadeOut 0.2s ease-in forwards; }
+      #lawyer-carousel .carousel-item { transition: transform 0.3s ease; }
+      #lawyer-carousel .carousel-item:hover { transform: scale(1.02); }
+      #lawyer-carousel-inner { min-width: 100%; }
+      #lawyer-carousel-prev:disabled, #lawyer-carousel-next:disabled { cursor: not-allowed; }
+      @media (max-width: 768px) {
+        #chat-sidebar { position: absolute; top: 43px; left: 0; height: calc(100% - 43px); z-index: 10; width: 250px; transition: transform 0.3s ease; }
+        #chat-sidebar.hidden { transform: translateX(-100%); }
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-md sticky top-0 z-50">
+      <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+        <!-- Logo ahora va al home -->
+        <a href="{{ url_for('index') }}" class="text-2xl font-bold text-indigo-900">Justify</a>
+        <div class="hidden md:flex justify-center space-x-6 flex-1">
+          <a href="#inicio" class="font-medium hover:text-indigo-700 transition">Inicio</a>
+          <a href="#directorio" class="font-medium hover:text-indigo-700 transition">Directorio</a>
+          <a href="#sobre-nosotros" class="font-medium hover:text-indigo-700 transition">Sobre Nosotros</a>
+          <!-- Acceso directo al asistente en el navbar (opcional) -->
+          <a href="{{ url_for('chatbot') }}" class="font-medium hover:text-indigo-700 transition">Asistente</a>
+        </div>
+        <div id="auth-controls" class="ml-auto mr-4">
+          <button id="login-button" class="bg-indigo-700 text-white px-4 py-2 rounded-md hover:bg-indigo-800 transition">Iniciar Sesión</button>
+          <div id="user-dropdown" class="relative hidden">
+            <button id="user-menu-button" class="flex items-center space-x-2 font-medium text-indigo-700 hover:text-indigo-900">
+              <span id="user-name">Usuario</span>
+              <i class="fas fa-chevron-down"></i>
+            </button>
+            <div id="dropdown-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 hidden z-10">
+              <a href="javascript:void(0)" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Perfil</a>
+              <a href="javascript:void(0)" id="logout-button" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Cerrar sesión</a>
+            </div>
+          </div>
+        </div>
+        <button class="md:hidden focus:outline-none">
+          <i class="fas fa-bars text-xl"></i>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Mobile Menu -->
+    <div class="hidden bg-white w-full py-4 px-6 shadow-lg md:hidden">
+      <div class="flex flex-col space-y-4">
+        <a href="#inicio" class="font-medium hover:text-indigo-700 transition">Inicio</a>
+        <a href="#directorio" class="font-medium hover:text-indigo-700 transition">Directorio</a>
+        <a href="#sobre-nosotros" class="font-medium hover:text-indigo-700 transition">Sobre Nosotros</a>
+        <a href="{{ url_for('chatbot') }}" class="font-medium hover:text-indigo-700 transition">Asistente</a>
+      </div>
+    </div>
+
+    <!-- Hero Section -->
+    <section id="inicio" class="hero-section flex items-center justify-center text-white">
+      <div class="container mx-auto px-4 text-center animate-fade-in">
+        <h1 class="text-4xl md:text-6xl font-bold mb-6">Bienvenido a Justify Legal Connect</h1>
+        <p class="text-xl md:text-2xl mb-10 max-w-3xl mx-auto">Encuentra al abogado ideal y recibe asesoramiento impulsado por IA para tu caso legal.</p>
+        <div class="space-x-3">
+          <a href="#directorio" class="bg-white text-indigo-900 px-8 py-4 rounded-full font-semibold text-lg hover:bg-opacity-90 transition shadow-lg inline-block">Comenzar</a>
+          <!-- Botón directo al chatbot -->
+          <a href="{{ url_for('chatbot') }}" class="bg-indigo-700 text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-indigo-800 transition shadow-lg inline-block">Ir al Asistente Legal</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- About Section -->
+    <section class="py-20 bg-white">
+      <div class="container mx-auto px-4">
+        <h2 class="text-3xl font-bold text-center section-heading">¿Qué es Justify?</h2>
+        <div class="max-w-4xl mx-auto mt-12">
+          <p class="text-lg text-gray-700 leading-relaxed text-center mb-8">
+            Justify es la plataforma integral que te conecta con abogados especializados en distintas áreas del derecho. Nuestra misión es facilitar el acceso a asesoramiento legal de calidad a través de tecnología avanzada y una red verificada de profesionales.
+          </p>
+          <div class="grid md:grid-cols-3 gap-8 mt-12">
+            <div class="text-center p-6 bg-gray-50 rounded-lg shadow-sm">
+              <div class="inline-block p-4 bg-indigo-100 rounded-full mb-4">
+                <i class="fas fa-search text-indigo-700 text-2xl"></i>
+              </div>
+              <h3 class="text-xl font-semibold mb-2">Búsqueda Simplificada</h3>
+              <p class="text-gray-600">Encuentra al abogado ideal según tu caso específico, ubicación y presupuesto.</p>
+            </div>
+
+            <!-- Tarjeta completa clickeable a /chatbot -->
+            <a href="{{ url_for('chatbot') }}" class="block text-center p-6 bg-gray-50 rounded-lg shadow-sm hover:shadow-md transition hover:-translate-y-0.5 cursor-pointer">
+              <div class="inline-block p-4 bg-indigo-100 rounded-full mb-4">
+                <i class="fas fa-robot text-indigo-700 text-2xl"></i>
+              </div>
+              <h3 class="text-xl font-semibold mb-2 underline">Asistente Legal IA</h3>
+              <p class="text-gray-600">Resuelve dudas básicas y obtén orientación preliminar con nuestro chatbot especializado.</p>
+            </a>
+
+            <div class="text-center p-6 bg-gray-50 rounded-lg shadow-sm">
+              <div class="inline-block p-4 bg-indigo-100 rounded-full mb-4">
+                <i class="fas fa-star text-indigo-700 text-2xl"></i>
+              </div>
+              <h3 class="text-xl font-semibold mb-2">Profesionales Verificados</h3>
+              <p class="text-gray-600">Accede a perfiles detallados con calificaciones y reseñas de clientes reales.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Lawyer Directory Section -->
+    <section id="directorio" class="py-20 bg-gray-50">
+      <div class="container mx-auto px-4">
+        <h2 class="text-3xl font-bold text-center section-heading">Explora Nuestros Expertos Legales</h2>
+
+        <!-- Filtros -->
+        <div class="max-w-4xl mx-auto mt-10 mb-8 bg-white p-5 rounded-lg shadow-sm">
+          <div class="grid md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Especialidad</label>
+              <select class="w-full p-2 border border-gray-300 rounded-md" id="specialty-filter">
+                <option value="">Todas las especialidades</option>
+                <option value="penal">Derecho Penal</option>
+                <option value="familiar">Derecho Familiar</option>
+                <option value="laboral">Derecho Laboral</option>
+                <option value="civil">Derecho Civil</option>
+                <option value="mercantil">Derecho Mercantil</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Calificación mínima</label>
+              <select class="w-full p-2 border border-gray-300 rounded-md" id="rating-filter">
+                <option value="0">Todas las calificaciones</option>
+                <option value="4">4+ estrellas</option>
+                <option value="4.5">4.5+ estrellas</option>
+                <option value="5">5 estrellas</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Rango de precio</label>
+              <select class="w-full p-2 border border-gray-300 rounded-md" id="price-filter">
+                <option value="">Cualquier precio</option>
+                <option value="low">Económico ($500 - $1,000)</option>
+                <option value="medium">Intermedio ($1,000 - $2,500)</option>
+                <option value="high">Premium ($2,500+)</option>
+              </select>
+            </div>
+          </div>
+          <div class="mt-4 text-center">
+            <button id="apply-filters" class="bg-indigo-700 text-white px-6 py-2 rounded-md hover:bg-indigo-800 transition">Aplicar filtros</button>
+            <button id="reset-filters" class="ml-2 border border-gray-300 px-6 py-2 rounded-md hover:bg-gray-100 transition">Restablecer</button>
+          </div>
+        </div>
+
+        <!-- Cards (carousel simplificado) -->
+        <div class="carousel overflow-hidden relative mt-8" id="lawyer-carousel">
+          <div class="carousel-inner flex transition-transform duration-500" id="lawyer-carousel-inner">
+            <!-- (Se mantienen tus 6 tarjetas de ejemplo sin cambios de destino) -->
+            <!-- Lawyer Card 1 -->
+            <div class="carousel-item flex-shrink-0 w-full md:w-1/2 lg:w-1/3 p-2">
+              <div class="lawyer-card bg-white rounded-lg overflow-hidden shadow-md">
+                <div class="p-6">
+                  <div class="flex items-center mb-4">
+                    <img src="https://cdn.pixabay.com/photo/2019/12/04/09/12/man-4672199_960_720.jpg" alt="Abogado" class="w-16 h-16 rounded-full object-cover mr-4">
+                    <div>
+                      <h3 class="text-xl font-semibold">Carlos Rodríguez</h3>
+                      <p class="text-indigo-700">Derecho Penal</p>
+                    </div>
+                  </div>
+                  <div class="mb-4">
+                    <div class="flex items-center mb-1">
+                      <div class="text-yellow-400">
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>
+                      </div>
+                      <p class="ml-2 text-sm text-gray-600">4.5 (120 reseñas)</p>
+                    </div>
+                    <p class="text-lg font-medium">$1,800 / consulta</p>
+                  </div>
+                  <p class="text-gray-600 mb-4">Especialista en derecho penal con 15 años de experiencia en defensa criminal y representación ante tribunales.</p>
+                  <div class="flex items-center text-gray-600 mb-4">
+                    <i class="fas fa-map-marker-alt mr-2"></i><p>Polanco, Ciudad de México</p>
+                  </div>
+                  <div class="flex justify-between">
+                    <a href="javascript:void(0)" class="text-indigo-700 font-medium hover:underline">Ver perfil completo</a>
+                    <a href="javascript:void(0)" class="bg-indigo-700 text-white px-4 py-2 rounded-md hover:bg-indigo-800 transition">Contactar</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Lawyer Card 2 -->
+            <div class="carousel-item flex-shrink-0 w-full md:w-1/2 lg:w-1/3 p-2">
+              <div class="lawyer-card bg-white rounded-lg overflow-hidden shadow-md">
+                <div class="p-6">
+                  <div class="flex items-center mb-4">
+                    <img src="https://cdn.pixabay.com/photo/2019/07/13/11/44/woman-4334939_960_720.jpg" alt="Abogada" class="w-16 h-16 rounded-full object-cover mr-4">
+                    <div>
+                      <h3 class="text-xl font-semibold">Ana Martínez</h3>
+                      <p class="text-indigo-700">Derecho Familiar</p>
+                    </div>
+                  </div>
+                  <div class="mb-4">
+                    <div class="flex items-center mb-1">
+                      <div class="text-yellow-400">
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                      </div>
+                      <p class="ml-2 text-sm text-gray-600">5.0 (87 reseñas)</p>
+                    </div>
+                    <p class="text-lg font-medium">$2,200 / consulta</p>
+                  </div>
+                  <p class="text-gray-600 mb-4">Especializada en divorcios, custodia de menores y pensiones alimenticias con enfoque en resolución pacífica de conflictos.</p>
+                  <div class="flex items-center text-gray-600 mb-4">
+                    <i class="fas fa-map-marker-alt mr-2"></i><p>Condesa, Ciudad de México</p>
+                  </div>
+                  <div class="flex justify-between">
+                    <a href="javascript:void(0)" class="text-indigo-700 font-medium hover:underline">Ver perfil completo</a>
+                    <a href="javascript:void(0)" class="bg-indigo-700 text-white px-4 py-2 rounded-md hover:bg-indigo-800 transition">Contactar</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Lawyer Card 3 -->
+            <div class="carousel-item flex-shrink-0 w-full md:w-1/2 lg:w-1/3 p-2">
+              <div class="lawyer-card bg-white rounded-lg overflow-hidden shadow-md">
+                <div class="p-6">
+                  <div class="flex items-center mb-4">
+                    <img src="https://cdn.pixabay.com/photo/2016/11/29/09/38/adult-1868750_960_720.jpg" alt="Abogado" class="w-16 h-16 rounded-full object-cover mr-4">
+                    <div>
+                      <h3 class="text-xl font-semibold">Roberto Gómez</h3>
+                      <p class="text-indigo-700">Derecho Laboral</p>
+                    </div>
+                  </div>
+                  <div class="mb-4">
+                    <div class="flex items-center mb-1">
+                      <div class="text-yellow-400">
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="far fa-star"></i>
+                      </div>
+                      <p class="ml-2 text-sm text-gray-600">4.0 (56 reseñas)</p>
+                    </div>
+                    <p class="text-lg font-medium">$900 / consulta</p>
+                  </div>
+                  <p class="text-gray-600 mb-4">Abogado laboral con experiencia en despidos injustificados, acoso laboral y negociación de indemnizaciones.</p>
+                  <div class="flex items-center text-gray-600 mb-4">
+                    <i class="fas fa-map-marker-alt mr-2"></i><p>Del Valle, Ciudad de México</p>
+                  </div>
+                  <div class="flex justify-between">
+                    <a href="javascript:void(0)" class="text-indigo-700 font-medium hover:underline">Ver perfil completo</a>
+                    <a href="javascript:void(0)" class="bg-indigo-700 text-white px-4 py-2 rounded-md hover:bg-indigo-800 transition">Contactar</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Lawyer Card 4 -->
+            <div class="carousel-item flex-shrink-0 w-full md:w-1/2 lg:w-1/3 p-2">
+              <div class="lawyer-card bg-white rounded-lg overflow-hidden shadow-md">
+                <div class="p-6">
+                  <div class="flex items-center mb-4">
+                    <img src="https://cdn.pixabay.com/photo/2017/08/01/15/09/people-2566855_960_720.jpg" alt="Abogada" class="w-16 h-16 rounded-full object-cover mr-4">
+                    <div>
+                      <h3 class="text-xl font-semibold">Laura Sánchez</h3>
+                      <p class="text-indigo-700">Derecho Civil</p>
+                    </div>
+                  </div>
+                  <div class="mb-4">
+                    <div class="flex items-center mb-1">
+                      <div class="text-yellow-400">
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>
+                      </div>
+                      <p class="ml-2 text-sm text-gray-600">4.5 (93 reseñas)</p>
+                    </div>
+                    <p class="text-lg font-medium">$1,500 / consulta</p>
+                  </div>
+                  <p class="text-gray-600 mb-4">Especialista en contratos, responsabilidad civil y reclamaciones por daños con más de 10 años de experiencia.</p>
+                  <div class="flex items-center text-gray-600 mb-4">
+                    <i class="fas fa-map-marker-alt mr-2"></i><p>Santa Fe, Ciudad de México</p>
+                  </div>
+                  <div class="flex justify-between">
+                    <a href="javascript:void(0)" class="text-indigo-700 font-medium hover:underline">Ver perfil completo</a>
+                    <a href="javascript:void(0)" class="bg-indigo-700 text-white px-4 py-2 rounded-md hover:bg-indigo-800 transition">Contactar</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Lawyer Card 5 -->
+            <div class="carousel-item flex-shrink-0 w-full md:w-1/2 lg:w-1/3 p-2">
+              <div class="lawyer-card bg-white rounded-lg overflow-hidden shadow-md">
+                <div class="p-6">
+                  <div class="flex items-center mb-4">
+                    <img src="https://cdn.pixabay.com/photo/2017/11/02/14/27/model-2911332_960_720.jpg" alt="Abogado" class="w-16 h-16 rounded-full object-cover mr-4">
+                    <div>
+                      <h3 class="text-xl font-semibold">Javier López</h3>
+                      <p class="text-indigo-700">Derecho Mercantil</p>
+                    </div>
+                  </div>
+                  <div class="mb-4">
+                    <div class="flex items-center mb-1">
+                      <div class="text-yellow-400">
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                      </div>
+                      <p class="ml-2 text-sm text-gray-600">4.9 (112 reseñas)</p>
+                    </div>
+                    <p class="text-lg font-medium">$3,000 / consulta</p>
+                  </div>
+                  <p class="text-gray-600 mb-4">Abogado corporativo especializado en contratos mercantiles, fusiones y adquisiciones, y asesoría empresarial.</p>
+                  <div class="flex items-center text-gray-600 mb-4">
+                    <i class="fas fa-map-marker-alt mr-2"></i><p>Reforma, Ciudad de México</p>
+                  </div>
+                  <div class="flex justify-between">
+                    <a href="javascript:void(0)" class="text-indigo-700 font-medium hover:underline">Ver perfil completo</a>
+                    <a href="javascript:void(0)" class="bg-indigo-700 text-white px-4 py-2 rounded-md hover:bg-indigo-800 transition">Contactar</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Lawyer Card 6 -->
+            <div class="carousel-item flex-shrink-0 w-full md:w-1/2 lg:w-1/3 p-2">
+              <div class="lawyer-card bg-white rounded-lg overflow-hidden shadow-md">
+                <div class="p-6">
+                  <div class="flex items-center mb-4">
+                    <img src="https://cdn.pixabay.com/photo/2018/01/15/07/52/woman-3083390_960_720.jpg" alt="Abogada" class="w-16 h-16 rounded-full object-cover mr-4">
+                    <div>
+                      <h3 class="text-xl font-semibold">María Torres</h3>
+                      <p class="text-indigo-700">Derecho Penal</p>
+                    </div>
+                  </div>
+                  <div class="mb-4">
+                    <div class="flex items-center mb-1">
+                      <div class="text-yellow-400">
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i><i class="far fa-star"></i>
+                      </div>
+                      <p class="ml-2 text-sm text-gray-600">3.5 (42 reseñas)</p>
+                    </div>
+                    <p class="text-lg font-medium">$1,200 / consulta</p>
+                  </div>
+                  <p class="text-gray-600 mb-4">Especializada en derecho penal con enfoque en defensa de jóvenes y casos de drogas de baja escala.</p>
+                  <div class="flex items-center text-gray-600 mb-4">
+                    <i class="fas fa-map-marker-alt mr-2"></i><p>Coyoacán, Ciudad de México</p>
+                  </div>
+                  <div class="flex justify-between">
+                    <a href="javascript:void(0)" class="text-indigo-700 font-medium hover:underline">Ver perfil completo</a>
+                    <a href="javascript:void(0)" class="bg-indigo-700 text-white px-4 py-2 rounded-md hover:bg-indigo-800 transition">Contactar</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button id="lawyer-carousel-prev" class="absolute top-1/2 left-2 transform -translate-y-1/2 bg-black bg-opacity-30 hover:bg-opacity-50 text-white rounded-full w-10 h-10 flex items-center justify-center transition"><i class="fas fa-chevron-left"></i></button>
+          <button id="lawyer-carousel-next" class="absolute top-1/2 right-2 transform -translate-y-1/2 bg-black bg-opacity-30 hover:bg-opacity-50 text-white rounded-full w-10 h-10 flex items-center justify-center transition"><i class="fas fa-chevron-right"></i></button>
+        </div>
+
+        <div class="flex justify-center mt-6" id="lawyer-carousel-dots"></div>
+      </div>
+    </section>
+
+    <!-- Testimonials & Summary Section -->
+    <section id="sobre-nosotros" class="py-20 bg-gray-50">
+      <div class="container mx-auto px-4">
+        <h2 class="text-3xl font-bold text-center section-heading">¿Por qué elegir Justify?</h2>
+        <div class="max-w-4xl mx-auto mt-12 carousel">
+          <div class="carousel-inner">
+            <div class="carousel-item p-2">
+              <div class="testimonial-card p-8">
+                <div class="text-yellow-400 mb-4"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+                <blockquote class="text-lg italic mb-6">"Gracias a Justify encontré al abogado perfecto para mi caso de divorcio. El proceso fue rápido y la asesoría previa del chatbot me ayudó a entender qué documentos necesitaba preparar."</blockquote>
+                <div class="flex items-center">
+                  <div class="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center mr-3"><i class="fas fa-user text-gray-500"></i></div>
+                  <div><h4 class="font-semibold">Marta G.</h4><p class="text-sm text-gray-600">Cliente desde 2024</p></div>
+                </div>
+              </div>
+            </div>
+            <div class="carousel-item p-2">
+              <div class="testimonial-card p-8">
+                <div class="text-yellow-400 mb-4"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i></div>
+                <blockquote class="text-lg italic mb-6">"Como emprendedor, necesitaba asesoría legal para mi startup sin gastar una fortuna. El asistente de IA de Justify me dio información valiosa y me conectó con un abogado especializado en empresas emergentes."</blockquote>
+                <div class="flex items-center">
+                  <div class="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center mr-3"><i class="fas fa-user text-gray-500"></i></div>
+                  <div><h4 class="font-semibold">Daniel R.</h4><p class="text-sm text-gray-600">Cliente desde 2023</p></div>
+                </div>
+              </div>
+            </div>
+            <div class="carousel-item p-2">
+              <div class="testimonial-card p-8">
+                <div class="text-yellow-400 mb-4"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+                <blockquote class="text-lg italic mb-6">"Tuve un problema laboral complicado y no sabía por dónde empezar. La plataforma de Justify me permitió comparar varios abogados, revisar sus calificaciones y encontrar uno que se adaptara a mi presupuesto."</blockquote>
+                <div class="flex items-center">
+                  <div class="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center mr-3"><i class="fas fa-user text-gray-500"></i></div>
+                  <div><h4 class="font-semibold">Luis M.</h4><p class="text-sm text-gray-600">Cliente desde 2024</p></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="flex justify-center mt-6">
+            <button class="carousel-nav w-3 h-3 rounded-full bg-gray-300 mx-1 hover:bg-indigo-700 transition" data-index="0"></button>
+            <button class="carousel-nav w-3 h-3 rounded-full bg-gray-300 mx-1 hover:bg-indigo-700 transition" data-index="1"></button>
+            <button class="carousel-nav w-3 h-3 rounded-full bg-gray-300 mx-1 hover:bg-indigo-700 transition" data-index="2"></button>
+          </div>
+        </div>
+
+        <div class="max-w-4xl mx-auto mt-20">
+          <div class="grid md:grid-cols-3 gap-8">
+            <div class="bg-white p-6 rounded-lg shadow-sm text-center">
+              <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fas fa-check text-indigo-700 text-2xl"></i></div>
+              <h3 class="text-xl font-semibold mb-2">Expertos Verificados</h3>
+              <p class="text-gray-600">Todos los abogados en nuestra plataforma pasan por un riguroso proceso de verificación y revisión de credenciales.</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-sm text-center">
+              <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fas fa-dollar-sign text-indigo-700 text-2xl"></i></div>
+              <h3 class="text-xl font-semibold mb-2">Tarifas Transparentes</h3>
+              <p class="text-gray-600">Conoce los costos por adelantado sin sorpresas. Filtra abogados según tu presupuesto y necesidades.</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-sm text-center">
+              <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fas fa-brain text-indigo-700 text-2xl"></i></div>
+              <h3 class="text-xl font-semibold mb-2">Asistencia Inteligente</h3>
+              <p class="text-gray-600">Nuestro asistente con IA te ayuda a entender tu situación legal y te conecta con el profesional adecuado.</p>
+            </div>
+          </div>
+          <div class="text-center mt-12">
+            <a href="{{ url_for('directorio') if false else '#directorio' }}" class="bg-indigo-700 text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-indigo-800 transition shadow-md inline-block">Contacta a un Abogado</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-12">
+      <div class="container mx-auto px-4">
+        <div class="grid md:grid-cols-4 gap-8">
+          <div>
+            <h3 class="text-2xl font-bold mb-4">Justify</h3>
+            <p class="text-gray-400">Conectando personas con la ayuda legal que necesitan desde 2023.</p>
+          </div>
+          <div>
+            <h4 class="text-lg font-semibold mb-4">Enlaces rápidos</h4>
+            <ul class="space-y-2">
+              <li><a href="#inicio" class="text-gray-400 hover:text-white transition">Inicio</a></li>
+              <li><a href="#directorio" class="text-gray-400 hover:text-white transition">Directorio de Abogados</a></li>
+              <!-- Aquí actualizamos al chatbot -->
+              <li><a href="{{ url_for('chatbot') }}" class="text-gray-400 hover:text-white transition">Asistente Legal IA</a></li>
+              <li><a href="#sobre-nosotros" class="text-gray-400 hover:text-white transition">Sobre Nosotros</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="text-lg font-semibold mb-4">Recursos</h4>
+            <ul class="space-y-2">
+              <li><a href="javascript:void(0)" class="text-gray-400 hover:text-white transition">Blog Legal</a></li>
+              <li><a href="javascript:void(0)" class="text-gray-400 hover:text-white transition">Guías Jurídicas</a></li>
+              <li><a href="javascript:void(0)" class="text-gray-400 hover:text-white transition">Preguntas Frecuentes</a></li>
+              <li><a href="javascript:void(0)" class="text-gray-400 hover:text-white transition">Glosario Legal</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="text-lg font-semibold mb-4">Contáctanos</h4>
+            <ul class="space-y-2">
+              <li class="flex items-center"><i class="fas fa-envelope mr-2"></i> info@justify.com</li>
+              <li class="flex items-center"><i class="fas fa-phone mr-2"></i> +52 55 1234 5678</li>
+              <li class="mt-4">
+                <div class="flex space-x-4">
+                  <a href="javascript:void(0)" class="text-gray-400 hover:text-white transition"><i class="fab fa-facebook-f"></i></a>
+                  <a href="javascript:void(0)" class="text-gray-400 hover:text-white transition"><i class="fab fa-twitter"></i></a>
+                  <a href="javascript:void(0)" class="text-gray-400 hover:text-white transition"><i class="fab fa-instagram"></i></a>
+                  <a href="javascript:void(0)" class="text-gray-400 hover:text-white transition"><i class="fab fa-linkedin-in"></i></a>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="border-t border-gray-800 mt-8 pt-6 text-center text-gray-500">
+          <p>&copy; 2025 Justify Legal Connect. Todos los derechos reservados.</p>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Scroll to Top Button -->
+    <button id="scroll-top" class="scroll-to-top bg-indigo-700 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg">
+      <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <script id="app-script">
+      document.addEventListener('DOMContentLoaded', function() {
+        // Mobile menu toggle
+        const mobileMenuButton = document.querySelector('nav button');
+        const mobileMenu = document.querySelector('.hidden.bg-white.w-full');
+        mobileMenuButton.addEventListener('click', function() {
+          mobileMenu.classList.toggle('hidden');
+        });
+
+        // Scroll to top
+        const scrollTopButton = document.getElementById('scroll-top');
+        window.addEventListener('scroll', function() {
+          scrollTopButton.style.display = window.pageYOffset > 300 ? 'flex' : 'none';
+        });
+        scrollTopButton.addEventListener('click', function() {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        // Login demo
+        const loginButton = document.getElementById('login-button');
+        const userDropdown = document.getElementById('user-dropdown');
+        const userMenuButton = document.getElementById('user-menu-button');
+        const dropdownMenu = document.getElementById('dropdown-menu');
+        const userName = document.getElementById('user-name');
+        const logoutButton = document.getElementById('logout-button');
+
+        function checkLoginStatus() {
+          const loggedIn = localStorage.getItem('justifyLoggedIn');
+          const user = localStorage.getItem('justifyUser');
+          if (loggedIn === 'true' && user) {
+            loginButton.classList.add('hidden');
+            userDropdown.classList.remove('hidden');
+            userName.textContent = JSON.parse(user).name;
+          } else {
+            loginButton.classList.remove('hidden');
+            userDropdown.classList.add('hidden');
+          }
+        }
+        checkLoginStatus();
+
+        loginButton.addEventListener('click', function() {
+          // Demo login directo
+          localStorage.setItem('justifyLoggedIn', 'true');
+          localStorage.setItem('justifyUser', JSON.stringify({ name: 'Usuario', email: 'usuario@correo.com' }));
+          checkLoginStatus();
+        });
+        userMenuButton && userMenuButton.addEventListener('click', function() {
+          dropdownMenu.classList.toggle('hidden');
+        });
+        document.addEventListener('click', function(e) {
+          if (userMenuButton && !userMenuButton.contains(e.target) && !dropdownMenu.contains(e.target)) {
+            dropdownMenu.classList.add('hidden');
+          }
+        });
+        logoutButton && logoutButton.addEventListener('click', function() {
+          localStorage.removeItem('justifyLoggedIn');
+          localStorage.removeItem('justifyUser');
+          checkLoginStatus();
+          dropdownMenu.classList.add('hidden');
+        });
+
+        // Carrusel testimonios
+        const carouselInner = document.querySelector('.carousel-inner');
+        const carouselNavs = document.querySelectorAll('.carousel-nav');
+        let currentSlide = 0;
+        carouselNavs.forEach(nav => {
+          nav.addEventListener('click', function() {
+            currentSlide = parseInt(this.getAttribute('data-index'));
+            updateCarousel();
+            updateNav();
+          });
+        });
+        function updateCarousel() { carouselInner.style.transform = `translateX(-${currentSlide * 100}%)`; }
+        function updateNav() {
+          carouselNavs.forEach((nav, index) => {
+            if (index === currentSlide) { nav.classList.add('bg-indigo-700'); nav.classList.remove('bg-gray-300'); }
+            else { nav.classList.remove('bg-indigo-700'); nav.classList.add('bg-gray-300'); }
+          });
+        }
+        setInterval(() => { currentSlide = (currentSlide + 1) % 3; updateCarousel(); updateNav(); }, 8000);
+        updateNav();
+
+        // Directorio (demo filtros)
+        const applyFiltersBtn = document.getElementById('apply-filters');
+        const resetFiltersBtn = document.getElementById('reset-filters');
+        applyFiltersBtn.addEventListener('click', () => alert("Demo: aquí se aplicarían filtros al directorio."));
+        resetFiltersBtn.addEventListener('click', () => {
+          document.getElementById('specialty-filter').selectedIndex = 0;
+          document.getElementById('rating-filter').selectedIndex = 0;
+          document.getElementById('price-filter').selectedIndex = 0;
+        });
+
+        // Carrusel abogados (paginación por ancho)
+        const lawyerCarouselInner = document.getElementById('lawyer-carousel-inner');
+        const lawyerCarouselItems = lawyerCarouselInner.querySelectorAll('.carousel-item');
+        const lawyerCarouselPrev = document.getElementById('lawyer-carousel-prev');
+        const lawyerCarouselNext = document.getElementById('lawyer-carousel-next');
+        const lawyerCarouselDots = document.getElementById('lawyer-carousel-dots');
+
+        let lawyerCurrentIndex = 0;
+        let lawyerItemsPerPage = 1;
+        let lawyerTotalPages = Math.ceil(lawyerCarouselItems.length / lawyerItemsPerPage);
+
+        function updateLawyerCarouselLayout() {
+          if (window.innerWidth >= 1024) lawyerItemsPerPage = 3;
+          else if (window.innerWidth >= 768) lawyerItemsPerPage = 2;
+          else lawyerItemsPerPage = 1;
+          lawyerTotalPages = Math.ceil(lawyerCarouselItems.length / lawyerItemsPerPage);
+          if (lawyerCurrentIndex >= lawyerTotalPages) lawyerCurrentIndex = lawyerTotalPages - 1;
+          updateLawyerCarousel();
+          updateLawyerCarouselDots();
+        }
+        function updateLawyerCarousel() {
+          const cardWidth = lawyerCarouselItems[0].offsetWidth;
+          const translateX = -(lawyerCurrentIndex * cardWidth * lawyerItemsPerPage);
+          lawyerCarouselInner.style.transform = `translateX(${translateX}px)`;
+          lawyerCarouselPrev.disabled = lawyerCurrentIndex === 0;
+          lawyerCarouselPrev.classList.toggle('opacity-50', lawyerCurrentIndex === 0);
+          lawyerCarouselNext.disabled = lawyerCurrentIndex === lawyerTotalPages - 1;
+          lawyerCarouselNext.classList.toggle('opacity-50', lawyerCurrentIndex === lawyerTotalPages - 1);
+        }
+        function updateLawyerCarouselDots() {
+          lawyerCarouselDots.innerHTML = '';
+          for (let i = 0; i < lawyerTotalPages; i++) {
+            const dot = document.createElement('button');
+            dot.className = `w-3 h-3 rounded-full mx-1 transition-colors ${i === lawyerCurrentIndex ? 'bg-indigo-700' : 'bg-gray-300 hover:bg-gray-400'}`;
+            dot.dataset.index = i;
+            dot.addEventListener('click', () => { lawyerCurrentIndex = i; updateLawyerCarousel(); updateLawyerCarouselDots(); });
+            lawyerCarouselDots.appendChild(dot);
+          }
+        }
+        lawyerCarouselPrev.addEventListener('click', () => {
+          if (lawyerCurrentIndex > 0) { lawyerCurrentIndex--; updateLawyerCarousel(); updateLawyerCarouselDots(); }
+        });
+        lawyerCarouselNext.addEventListener('click', () => {
+          if (lawyerCurrentIndex < lawyerTotalPages - 1) { lawyerCurrentIndex++; updateLawyerCarousel(); updateLawyerCarouselDots(); }
+        });
+        window.addEventListener('resize', updateLawyerCarouselLayout);
+        updateLawyerCarouselLayout();
+      });
+    </script>
+  </body>
+</html>
